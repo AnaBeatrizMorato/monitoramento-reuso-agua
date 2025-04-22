@@ -1,0 +1,51 @@
+import serial
+import paho.mqtt.client as mqtt
+
+# Configurações do MQTT
+broker = 'broker.hivemq.com'
+port = 1883
+topic = 'monitoramento/aguaDeReusoAnaBeatrizDeCarvalhoMorato'
+
+serial_port = 'COM8'
+baud_rate = 9600
+
+
+# Função de conexão com o broker MQTT
+def on_connect(client, userdata, flags, rc):
+    print(f'Conectado ao broker MQTT com código: {rc}')
+    client.subscribe(topic)
+
+
+# Função de envio de mensagem para o broker MQTT
+def on_message(client, userdata, msg):
+    print(f'Mensagem recebida: {msg.payload.decode()}')
+
+
+# Configura o cliente MQTT
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+
+# Conecta ao broker MQTT
+client.connect(broker, port, 60)
+
+# Abrir a porta serial
+serial_connection = serial.Serial(serial_port, baud_rate)
+
+
+# Função para ler da serial e publicar no MQTT
+def read_and_publish():
+    while True:
+        if serial_connection.in_waiting > 0:  # Verifica se há dados disponíveis
+            data = serial_connection.readline().decode('utf-8').strip()  # Lê e decodifica os dados
+            print(f'Dados recebidos do Arduino: {data}')
+
+            # Envia os dados para o broker MQTT
+            client.publish(topic, data)
+            print(f'Mensagem enviada para o MQTT: {data}')
+
+        client.loop()  # Mantém a comunicação com o broker MQTT
+
+
+# Inicia a leitura e envio
+read_and_publish()

@@ -1,0 +1,78 @@
+// === Sensor Ultrassônico ===
+const int trigPin = 9;
+const int echoPin = 10;
+
+// === LEDs da bomba ===
+const int ledVerde = 7;     // Bomba ligada
+const int ledVermelho = 6;  // Bomba desligada
+
+// === Botão para simular fluxo de água ===
+const int buttonPin = 2;  // Pino do botão
+int buttonState = 0;      // Estado do botão
+
+// === Controle da bomba ===
+const int distanciaLimite = 200;  // Limite da distância em cm
+long ultimaDistancia = -1;        // Última distância registrada
+
+// === Simulação do fluxo ===
+int litros = 0;  // Contador de litros
+unsigned long ultimoTempoLitros = 0;
+const unsigned long intervaloLitros = 2000;  // 2 segundos
+
+void setup() {
+  // Configurações dos pinos
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  pinMode(ledVerde, OUTPUT);
+  pinMode(ledVermelho, OUTPUT);
+
+  pinMode(buttonPin, INPUT_PULLUP);  // Ativa resistor interno
+
+  Serial.begin(9600);
+  Serial.println("Sistema iniciado. Pressione o botão para simular 1L de água.");
+}
+
+void loop() {
+  // === Medição da distância ===
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duracao = pulseIn(echoPin, HIGH);
+  long distancia = duracao * 0.034 / 2;
+
+  // Controle dos LEDs da bomba com base na distância
+  if (distancia > distanciaLimite) {
+    digitalWrite(ledVerde, HIGH);     // Liga bomba
+    digitalWrite(ledVermelho, LOW);   // Desliga alerta
+  } else {
+    digitalWrite(ledVerde, LOW);      // Desliga bomba
+    digitalWrite(ledVermelho, HIGH);  // Liga alerta
+  }
+
+  // === Simulação do sensor de fluxo com botão ===
+  unsigned long tempoAtual = millis();
+  if (tempoAtual - ultimoTempoLitros >= intervaloLitros) {
+    ultimoTempoLitros = tempoAtual;
+
+    buttonState = digitalRead(buttonPin);
+    if (buttonState == LOW) {  // Botão pressionado
+      litros++;
+
+      // Simulação de envio MQTT
+      Serial.print("MQTT >> Tópico: agua/fluxo | Mensagem: { \"litros\": ");
+      Serial.print(litros);
+      Serial.println(" }");
+
+      // Mensagem de feedback
+      Serial.print("1 litro passou. Total: ");
+      Serial.print(litros);
+      Serial.println(" L");
+    }
+  }
+
+  delay(100);  // Delay para estabilidade
+}
